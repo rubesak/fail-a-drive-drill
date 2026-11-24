@@ -1,0 +1,188 @@
+/*! fail-a-drive v1.0.0 | MIT License */
+
+/* ---------- Tokens: light by default, dark with the system setting or data-theme="dark" ---------- */
+.fad {
+  --fad-bg: #fafafa;
+  --fad-bay: #f0f1f3;
+  --fad-line: #dcdfe4;
+  --fad-line-strong: #b4bac3;
+  --fad-fg: #15181d;
+  --fad-fg-soft: #394049;
+  --fad-muted: #59616c;
+  --fad-data: #3d63dd;        /* data strips, primary button, current step */
+  --fad-on-data: #ffffff;
+  --fad-parity: #0f7a82;      /* parity strips, healthy state, protection pips */
+  --fad-rebuild: #985600;     /* rebuild progress and rebuilt data */
+  --fad-fault: #d92d20;       /* failed drives */
+  --fad-fault-ink: #b42318;   /* text on failure */
+  --fad-fault-soft: rgba(217, 45, 32, .12);
+  --fad-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fad-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fad-radius: 6px;
+  --fad-ease: cubic-bezier(.2, .8, .2, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  .fad:not([data-theme="light"]) {
+    --fad-bg: #15181d; --fad-bay: #0f1216;
+    --fad-line: #2a3039; --fad-line-strong: #414955;
+    --fad-fg: #eef0f3; --fad-fg-soft: #c9ced6; --fad-muted: #9ba4b0;
+    --fad-data: #6f8eff; --fad-on-data: #0f1216;
+    --fad-parity: #52b6bc; --fad-rebuild: #e9aa3c;
+    --fad-fault: #ff5a4a; --fad-fault-ink: #ff8073; --fad-fault-soft: rgba(255, 90, 74, .14);
+    color-scheme: dark;
+  }
+}
+.fad[data-theme="dark"] {
+  --fad-bg: #15181d; --fad-bay: #0f1216;
+  --fad-line: #2a3039; --fad-line-strong: #414955;
+  --fad-fg: #eef0f3; --fad-fg-soft: #c9ced6; --fad-muted: #9ba4b0;
+  --fad-data: #6f8eff; --fad-on-data: #0f1216;
+  --fad-parity: #52b6bc; --fad-rebuild: #e9aa3c;
+  --fad-fault: #ff5a4a; --fad-fault-ink: #ff8073; --fad-fault-soft: rgba(255, 90, 74, .14);
+  color-scheme: dark;
+}
+
+/* ---------- Frame ---------- */
+.fad, .fad *, .fad *::before, .fad *::after { box-sizing: border-box; }
+.fad {
+  container: fad / inline-size;
+  margin: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--fad-line);
+  border-radius: var(--fad-radius);
+  background: var(--fad-bg);
+  color: var(--fad-fg);
+  font: 400 1rem/1.5 var(--fad-font);
+}
+.fad-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .8rem 2rem; margin-bottom: 1.2rem; }
+.fad-title { margin: 0; font: 700 clamp(1.25rem, 2.6vw, 1.75rem)/1.2 var(--fad-font); letter-spacing: -.015em; color: var(--fad-fg); }
+.fad-state { display: inline-flex; align-items: center; gap: .45rem; color: var(--fad-parity); font: 600 .75rem/1.3 var(--fad-mono); white-space: nowrap; }
+.fad-spec { margin-left: -.45rem; color: var(--fad-muted); font-weight: 400; }
+.fad-led { display: inline-block; flex: none; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; }
+.fad[data-status="degraded"] .fad-state, .fad[data-status="critical"] .fad-state, .fad[data-status="offline"] .fad-state { color: var(--fad-fault-ink); }
+.fad[data-status="degraded"] .fad-led, .fad[data-status="critical"] .fad-led { animation: fad-blink .5s steps(1) infinite; }
+.fad[data-status="rebuilding"] .fad-state, .fad[data-status="copyback"] .fad-state { color: var(--fad-rebuild); }
+
+/* ---------- Chassis and drives ---------- */
+.fad-chassis { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) 1.4rem; gap: .6rem; font-family: var(--fad-mono); }
+.fad-ear { display: grid; align-content: space-between; justify-items: center; padding: .8rem 0; border: 1px solid var(--fad-line); border-radius: 3px; }
+.fad-ear i { width: .5rem; height: .5rem; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fad-line-strong); }
+.fad-bays { display: grid; grid-template-columns: repeat(var(--fad-cols, 24), minmax(0, 1fr)); gap: .35rem; }
+.fad-disk { display: grid; grid-template-rows: auto auto 1fr auto; gap: .45rem; min-height: 11.5rem; padding: .55rem .3rem .45rem; border: 1px solid var(--fad-line); border-radius: 3px; background: var(--fad-bay); transition: border-color .3s, transform .25s var(--fad-ease), opacity .3s; }
+.fad.is-live .fad-disk:not(.is-failed):not(.is-replaced) { cursor: pointer; }
+.fad.is-live .fad-disk:not(.is-failed):not(.is-replaced):hover { border-color: var(--fad-fault); transform: translateY(-2px); }
+.fad.is-live .fad-disk:not(.is-failed):not(.is-replaced):hover .fad-flt { background: var(--fad-fault-soft); box-shadow: 0 0 0 1px var(--fad-fault); }
+.fad.is-busy .fad-disk, .fad.is-offline .fad-disk { cursor: default !important; transform: none !important; }
+.fad-leds { display: flex; justify-content: center; gap: .3rem; }
+.fad-leds i { width: .34rem; height: .34rem; border-radius: 50%; background: var(--fad-line-strong); }
+.fad-disk.is-act .fad-act { background: var(--fad-parity); }
+.fad.is-rebuilding .fad-disk:not(.is-failed) .fad-act { background: var(--fad-rebuild); animation: fad-blink .35s steps(1) infinite; }
+.fad.is-rebuilding .fad-disk:nth-child(3n) .fad-act { animation-duration: .5s; }
+.fad-disk.is-failed { border-color: var(--fad-fault); }
+.fad-disk.is-failed .fad-flt { background: var(--fad-fault); animation: fad-blink .5s steps(1) infinite; }
+.fad-disk.is-failed.is-rebuilt .fad-flt { animation: none; }
+.fad-disk.is-replaced { border-color: var(--fad-rebuild); }
+.fad-disk.is-replaced .fad-flt { background: var(--fad-rebuild); }
+
+.fad-strips { display: grid; gap: 3px; }
+.fad-blk { position: relative; display: block; height: .62rem; overflow: hidden; border-radius: 1.5px; background: var(--fad-data); transition: background .25s, opacity .25s, transform .25s var(--fad-ease); }
+.fad-disk:nth-child(odd) .fad-blk:nth-child(odd), .fad-disk:nth-child(even) .fad-blk:nth-child(even) { opacity: .8; }
+.fad-blk.is-parity { background: transparent; box-shadow: inset 0 0 0 1.5px var(--fad-parity); opacity: 1 !important; }
+.fad-blk.is-spare { background: repeating-linear-gradient(135deg, var(--fad-line-strong) 0 1.5px, transparent 1.5px 4px); box-shadow: inset 0 0 0 1px var(--fad-line-strong); opacity: 1 !important; }
+/* Rebuilt data fills the rebuild space of every surviving drive at the same time (--fad-fill, 0..1). */
+.fad-blk.is-spare::after { content: ""; position: absolute; inset: 0; background: var(--fad-rebuild); transform-origin: 0 50%; transform: scaleX(var(--fad-fill, 0)); transition: transform .15s linear; }
+.fad-disk.is-failed .fad-blk.is-spare::after, .fad-disk.is-replaced .fad-blk.is-spare::after { transform: scaleX(0); }
+.fad-grip { min-height: 1.5rem; margin: 0 18%; background: repeating-linear-gradient(to bottom, var(--fad-line) 0 2px, transparent 2px 6px); }
+.fad-label { text-align: center; font-size: .62rem; line-height: 1; color: var(--fad-muted); }
+.fad-disk.is-failed .fad-blk, .fad-disk.is-replaced .fad-blk:not(.is-restored) { background: transparent; box-shadow: inset 0 0 0 1px var(--fad-line-strong); opacity: 1 !important; }
+.fad-disk.is-failed .fad-grip { background: repeating-linear-gradient(to bottom, var(--fad-fault-soft) 0 2px, transparent 2px 6px); }
+.fad-disk.is-failed .fad-label { color: var(--fad-fault-ink); }
+.fad-disk.is-replaced .fad-label { color: var(--fad-rebuild); }
+.fad-disk.is-replaced .fad-blk.is-restored { background: var(--fad-rebuild); box-shadow: none; animation: fad-pop .3s var(--fad-ease); }
+.fad.is-offline .fad-disk:not(.is-failed) { opacity: .35; }
+
+/* ---------- Legend ---------- */
+.fad-legend { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1.1rem; margin: .8rem 2rem 0; font: .7rem/1.4 var(--fad-mono); color: var(--fad-muted); }
+.fad-key { display: inline-flex; align-items: center; gap: .4rem; }
+.fad-key i { width: .8rem; height: .45rem; border-radius: 1.5px; }
+.fad-k-data { background: var(--fad-data); }
+.fad-k-parity { box-shadow: inset 0 0 0 1.5px var(--fad-parity); }
+.fad-k-spare { background: repeating-linear-gradient(135deg, var(--fad-line-strong) 0 1px, transparent 1px 3px); box-shadow: inset 0 0 0 1px var(--fad-line-strong); }
+.fad-k-rebuilt { background: var(--fad-rebuild); }
+
+/* ---------- Panel: steps, story and buttons, meters ---------- */
+.fad-panel { display: grid; grid-template-columns: 10rem minmax(0, 1fr) 17rem; gap: 1.5rem 2.5rem; margin: 1.6rem 2rem 0; padding-top: 1.4rem; border-top: 1px solid var(--fad-line); }
+.fad-steps { display: grid; gap: .55rem; align-content: start; margin: 0; padding: 0; list-style: none; font: .74rem/1.3 var(--fad-mono); color: var(--fad-muted); counter-reset: fad-step; }
+.fad-steps li { display: flex; align-items: center; gap: .55rem; counter-increment: fad-step; }
+.fad-steps li::before { content: counter(fad-step); display: grid; flex: none; place-items: center; width: 1.3rem; height: 1.3rem; border: 1px solid var(--fad-line-strong); border-radius: 50%; font-size: .66rem; }
+.fad-steps li.is-done { color: var(--fad-fg-soft); }
+.fad-steps li.is-done::before { content: "\2713"; border-color: var(--fad-parity); color: var(--fad-parity); }
+.fad-steps li.is-now { color: var(--fad-fg); font-weight: 600; }
+.fad-steps li.is-now::before { border-color: var(--fad-data); background: var(--fad-data); color: var(--fad-on-data); }
+.fad.is-offline .fad-steps li { opacity: .5; }
+
+.fad-story { margin: 0; min-height: 4.8em; color: var(--fad-fg-soft); text-wrap: pretty; }
+.fad-story b { color: var(--fad-fg); font-weight: 600; }
+.fad-actions { display: none; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: 1rem; }
+.fad.is-live .fad-actions { display: flex; }
+.fad-actions [hidden] { display: none; }
+.fad-btn { display: inline-flex; align-items: center; padding: .55rem .85rem; border: 1px solid var(--fad-line-strong); border-radius: 4px; background: transparent; color: var(--fad-fg); font: 600 .8rem/1 var(--fad-font); cursor: pointer; transition: background .2s, border-color .2s, color .2s; }
+.fad-btn:hover { border-color: var(--fad-fault); }
+.fad-btn:focus-visible { outline: 2px solid var(--fad-data); outline-offset: 2px; }
+.fad-btn-primary { border-color: var(--fad-data); background: var(--fad-data); color: var(--fad-on-data); }
+.fad-btn-primary:hover { border-color: var(--fad-fg); background: var(--fad-fg); color: var(--fad-bg); }
+.fad.is-busy .fad-btn:not(.fad-btn-primary) { opacity: .5; pointer-events: none; }
+.fad-hint { font: .72rem/1.3 var(--fad-mono); color: var(--fad-muted); }
+.fad.is-offline .fad-hint, .fad.is-busy .fad-hint { visibility: hidden; }
+
+.fad-meters { display: grid; gap: .9rem; align-content: start; margin: 0; font: .72rem/1.3 var(--fad-mono); }
+.fad-meter dt { margin-bottom: .35rem; color: var(--fad-muted); }
+.fad-meter dt small { font-size: inherit; opacity: .75; }
+.fad-meter dd { display: flex; align-items: center; gap: .6rem; margin: 0; color: var(--fad-fg-soft); }
+.fad-pips { display: inline-flex; gap: .3rem; }
+.fad-pips i { width: .8rem; height: .8rem; border-radius: 2px; background: var(--fad-parity); transition: background .25s, box-shadow .25s; }
+.fad-pips i.is-off { background: transparent; box-shadow: inset 0 0 0 1.5px var(--fad-fault); }
+.fad.is-critical .fad-meter dd, .fad.is-offline .fad-meter:first-child dd { color: var(--fad-fault-ink); font-weight: 600; }
+.fad-bar { display: block; flex: 1; height: 6px; overflow: hidden; border-radius: 3px; background: var(--fad-line); }
+.fad-bar span { display: block; height: 100%; background: var(--fad-rebuild); transform: scaleX(0); transform-origin: 0 50%; }
+.fad-meter-ghost .fad-bar span { background: var(--fad-muted); }
+
+/* ---------- Narrow containers ---------- */
+@container fad (max-width: 56rem) {
+  .fad-bays { grid-template-columns: repeat(var(--fad-cols-sm, 12), minmax(0, 1fr)); }
+  .fad-disk { min-height: 8.5rem; }
+  .fad-panel { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+  .fad-steps { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; }
+  .fad-meters { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .9rem 1.5rem; }
+  .fad-story { min-height: 6.4em; }
+}
+@container fad (max-width: 38rem) {
+  .fad-chassis { grid-template-columns: minmax(0, 1fr); }
+  .fad-ear { display: none; }
+  .fad-bays { gap: .25rem; }
+  .fad-disk { min-height: 7rem; gap: .35rem; padding: .45rem .15rem .35rem; }
+  .fad-blk { height: .45rem; }
+  .fad-grip { min-height: .6rem; margin: 0 22%; }
+  .fad-legend, .fad-panel { margin-inline: 0; }
+}
+@media (max-width: 40rem) { .fad { padding: 1rem; } }
+
+/* ---------- Motion ---------- */
+@keyframes fad-blink { 50% { opacity: 0; } }
+@keyframes fad-pop { from { transform: scale(.6); } to { transform: none; } }
+@keyframes fad-spinup { from { opacity: 0; transform: scale(.4); } }
+/* Power-on: bays light up left to right, then the strips fill. Added by JS only when motion is allowed.
+   --fad-d (drive index) is set on each drive and inherited by its strips; --fad-r is the strip row. */
+.fad.is-booting .fad-blk, .fad.is-booting .fad-leds i, .fad.is-booting .fad-state { opacity: 0 !important; }
+.fad.is-booted .fad-leds i { animation: fad-spinup .3s var(--fad-ease) both; animation-delay: calc(var(--fad-d, 0) * 35ms); }
+.fad.is-booted .fad-blk { animation: fad-spinup .35s var(--fad-ease) both; animation-delay: calc(var(--fad-d, 0) * 35ms + 200ms + var(--fad-r, 0) * 30ms); }
+/* I/O: a short write on a random data strip, and the drive's activity light */
+.fad-blk.is-io { filter: brightness(1.35) saturate(1.1); transition: filter .05s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fad, .fad *, .fad *::before, .fad *::after { animation: none !important; transition: none !important; }
+}
+@media print {
+  .fad-actions, .fad-meters { display: none !important; }
+}

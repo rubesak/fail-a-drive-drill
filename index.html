@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The demo runs under a strict CSP: no inline scripts, no inline styles. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'">
+  <title>fail-a-drive demo</title>
+  <link rel="stylesheet" href="demo/demo.css">
+  <link rel="stylesheet" href="dist/fail-a-drive.css">
+</head>
+<body>
+  <main>
+    <header class="demo-head">
+      <h1>fail-a-drive</h1>
+      <p>An interactive failure drill for a distributed RAID 6 array. Fail drives, watch the rebuild and the copyback, and see what a third failure does. Vanilla JS and CSS, no dependencies.</p>
+      <div class="demo-theme" role="group" aria-label="Theme">
+        <button type="button" data-set-theme="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-set-theme="light" aria-pressed="false">Light</button>
+        <button type="button" data-set-theme="dark" aria-pressed="false">Dark</button>
+      </div>
+    </header>
+
+    <h2 class="demo-h">Default: 24 drives</h2>
+    <!-- Mounted automatically by dist/fail-a-drive.js. The content inside is the no-JS fallback. -->
+    <div data-fail-a-drive>
+      <p>Interactive demo of a 24-drive distributed RAID 6 array. It needs JavaScript.</p>
+    </div>
+
+    <h2 class="demo-h">Narrow container: 12 drives, faster rebuild</h2>
+    <div class="demo-narrow">
+      <div data-fail-a-drive data-drives="12" data-rebuild-ms="4000" data-title="Twelve drives, one pool."></div>
+    </div>
+
+    <h2 class="demo-h">Events</h2>
+    <p class="demo-note">Every instance dispatches <code>faildrive:status</code> and <code>faildrive:rebuild</code>. The last few:</p>
+    <ol class="demo-log" data-log reversed></ol>
+  </main>
+  <script src="dist/fail-a-drive.js"></script>
+  <script src="demo/demo.js"></script>
+</body>
+</html>

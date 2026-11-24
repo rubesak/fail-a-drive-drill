@@ -1,0 +1,63 @@
+{
+  "name": "fail-a-drive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive failure drill for a distributed RAID 6 drive array: fail drives, watch the rebuild, the copyback and what a third failure does. Vanilla JS and CSS, no dependencies.",
+  "keywords": [
+    "raid",
+    "raid6",
+    "draid",
+    "storage",
+    "rebuild",
+    "hot-spare",
+    "sre",
+    "interactive",
+    "education",
+    "vanilla-js"
+  ],
+  "license": "MIT",
+  "author": "Michal Rubes",
+  "homepage": "https://github.com/rubesak/fail-a-drive-drill#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rubesak/fail-a-drive-drill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rubesak/fail-a-drive-drill/issues"
+  },
+  "type": "module",
+  "main": "./dist/fail-a-drive.mjs",
+  "module": "./dist/fail-a-drive.mjs",
+  "style": "./dist/fail-a-drive.css",
+  "types": "./dist/fail-a-drive.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/fail-a-drive.d.ts",
+      "import": "./dist/fail-a-drive.mjs"
+    },
+    "./style.css": "./dist/fail-a-drive.css",
+    "./classic": "./dist/fail-a-drive.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "test": "npm run check && node --test test/drill.test.mjs",
+    "demo": "npm run build && node scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
