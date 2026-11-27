@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
+## 1.1.0
+
+- Rebuild areas: the array has a limited distributed spare capacity (`rebuildAreas`, default 1). Each failed drive keeps its rebuild area until it is replaced. With no free area a failure is not rebuilt and the array stays degraded, then critical, then offline. Before, failing two drives, waiting for the rebuild and failing two more was accepted again and again.
+- One rebuild per rebuild area; a second failure during the rebuild waits.
+- New *Rebuild area* meter and rebuild area count in the status line.
+- Drives are replaced by the visitor (*Replace failed drives* button, `replace()` on the controller). `autoReplace: true` brings back the automatic replacement. Drives that never got a rebuild area are rebuilt straight onto the new drive.
+- Strings: new `replaceButton`, `meterAreas`, `areas`, `areasCopyback`, `state.noArea` and story texts `noArea`, `noAreaCritical`, `waiting`, `critical`; some story functions get more arguments.
+
 ## 1.0.0
 
 First release.

@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import { serve } from '../scripts/serve.mjs';
 
 // Short timings so a full cycle runs in about two seconds.
-const FAST = { rebuildMs: 300, detectMs: 50, holdMs: 50, copybackMs: 100, animate: false };
+const FAST = { rebuildMs: 300, detectMs: 50, holdMs: 50, copybackMs: 100, animate: false, autoReplace: true };
 
 let server, browser, base;
 
@@ -68,17 +68,61 @@ test('one failure: degraded, rebuild, protected, copyback, online', async () => 
   await page.close();
 });
 
-test('two failures: critical, then a full recovery of both drives', async () => {
+test('two failures: critical, the second drive gets no rebuild area, then both are replaced', async () => {
   const { page } = await fixture();
-  await page.evaluate((o) => { window.drill = window.FailADrive.mount('#a', o); }, { ...FAST, rebuildMs: 1000 });
+  await page.evaluate((o) => { window.drill = window.FailADrive.mount('#a', o); }, { ...FAST, rebuildMs: 1000, autoReplace: false });
   await page.evaluate(() => { window.drill.fail(1); });
   await waitStatus(page, 'rebuilding');
   await page.evaluate(() => { window.drill.fail(2); });
   assert.equal(await status(page), 'critical');
   assert.equal(await page.locator('.fad.is-critical').count(), 1);
-  assert.match(await page.textContent('.fad-story'), /Drive 2 failed during the rebuild\./);
+  assert.match(await page.textContent('.fad-story'), /Drive 2 failed during the rebuild\..*rebuild area is taken by drive 1/);
+  // Drive 1 is rebuilt into the only rebuild area, drive 2 has none: degraded, not protected.
+  await waitStatus(page, 'degraded');
+  assert.match(await page.textContent('.fad-state'), /no rebuild area left/);
+  assert.match(await page.textContent('.fad-meter-areas'), /used by drive 1, none free/);
+  assert.equal(await page.locator('.fad-pips:not(.fad-areas) i.is-off').count(), 1);
+  const replaceBtn = page.locator('.fad-btn-replace');
+  assert.equal(await replaceBtn.textContent(), 'Replace failed drives');
+  await replaceBtn.click();
+  assert.match(await page.textContent('.fad-story'), /Drive 2 had no rebuild area/);
+  await waitStatus(page, 'online');
+  assert.match(await page.textContent('.fad-meter-areas'), /free/);
+  await page.close();
+});
+
+test('rebuild areas: a finished rebuild does not free its rebuild area, so failures add up until offline', async () => {
+  const { page } = await fixture();
+  await page.evaluate((o) => { window.drill = window.FailADrive.mount('#a', o); }, { ...FAST, autoReplace: false });
+  assert.match(await page.textContent('.fad-state'), /1 rebuild area/);
+  await page.evaluate(() => window.drill.fail(0));
   await waitStatus(page, 'protected');
-  assert.match(await page.textContent('.fad-state'), /replace drives 1, 2/);
+  assert.equal(await page.locator('.fad-areas i.is-used').count(), 1);
+  assert.equal(await page.locator('.fad-btn-replace').isVisible(), true);
+  // The rebuild area still holds drive 0: drive 5 cannot be rebuilt.
+  await page.evaluate(() => window.drill.fail(5));
+  assert.equal(await status(page), 'degraded');
+  assert.match(await page.textContent('.fad-story'), /no rebuild area left/);
+  await page.waitForTimeout(500);
+  assert.equal(await status(page), 'degraded');
+  await page.evaluate(() => window.drill.fail(6));
+  assert.equal(await status(page), 'critical');
+  await page.evaluate(() => window.drill.fail(7));
+  assert.equal(await status(page), 'offline');
+  assert.equal(await page.locator('.fad-disk.is-failed').count(), 4);
+  await page.close();
+});
+
+test('two rebuild areas: two drives rebuild one after the other and both stay protected', async () => {
+  const { page } = await fixture();
+  await page.evaluate((o) => { window.drill = window.FailADrive.mount('#a', o); }, { ...FAST, rows: 3, rebuildAreas: 2, autoReplace: false });
+  await page.evaluate(() => { window.drill.fail(1); window.drill.fail(2); });
+  await waitStatus(page, 'protected');
+  assert.equal(await page.locator('.fad-areas i.is-used').count(), 2);
+  assert.match(await page.textContent('.fad-meter-areas'), /Rebuild areas.*used by drives 1, 2, none free/);
+  await page.evaluate(() => window.drill.fail(3));
+  assert.equal(await status(page), 'degraded');
+  await page.evaluate(() => window.drill.replace());
   await waitStatus(page, 'online');
   await page.close();
 });
@@ -87,7 +131,7 @@ test('three failures: offline, restore from backup, focus moves with the buttons
   const { page } = await fixture();
   await page.evaluate((o) => { window.drill = window.FailADrive.mount('#a', o); }, { ...FAST, rebuildMs: 5000 });
   const failBtn = page.locator('.fad-btn:not(.fad-btn-primary)');
-  const restoreBtn = page.locator('.fad-btn-primary');
+  const restoreBtn = page.locator('.fad-btn-primary:not(.fad-btn-replace)');
   await failBtn.focus();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
