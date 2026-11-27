@@ -1,6 +1,6 @@
 {
   "name": "fail-a-drive",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Interactive failure drill for a distributed RAID 6 drive array: fail drives, watch the rebuild, the copyback and what a third failure does. Vanilla JS and CSS, no dependencies.",
   "keywords": [

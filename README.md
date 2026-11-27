@@ -6,7 +6,7 @@ An interactive failure drill for a distributed RAID 6 drive array, for blogs, ta
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
-  <img alt="A 24-drive array during a rebuild: drive 6 has failed, every other drive fills its share of the rebuild space, protection is down to one drive" src="docs/screenshot-light.png">
+  <img alt="A 24-drive array with one rebuild area: drive 6 was rebuilt into the rebuild area, then drive 15 failed with no rebuild area left, so the array stays degraded until the drives are replaced" src="docs/screenshot-light.png">
 </picture>
 
 - Vanilla JS and CSS, no dependencies, about 33 kB unminified (JS and CSS together)
@@ -18,12 +18,14 @@ An interactive failure drill for a distributed RAID 6 drive array, for blogs, ta
 
 ## What it shows
 
-1. **Healthy.** Every drive holds data strips, parity strips and a slice of free rebuild space.
+1. **Healthy.** Every drive holds data strips, parity strips and a slice of the rebuild area: spare space for the data of one failed drive, spread over all drives.
 2. **Drive failed.** No data is lost. Missing blocks are calculated from data and parity on the other drives. Protection drops from two drives to one.
-3. **Rebuild.** All remaining drives rebuild the lost data at the same time, into their own rebuild space. A second bar shows the same rebuild with one dedicated hot spare, which has to take every write alone (an illustration, not a benchmark).
-4. **Drive replaced.** The data is copied back to the new drive and the rebuild space is free again.
+3. **Rebuild.** All remaining drives rebuild the lost data at the same time, into the rebuild area spread over them. A second bar shows the same rebuild with one dedicated hot spare, which has to take every write alone (an illustration, not a benchmark).
+4. **Replace drive.** The visitor replaces the failed drive. The data is copied back to the new drive and the rebuild area is free again.
 
-A second failure during the rebuild leaves no protection. A third one takes the pool offline.
+A second failure during the rebuild leaves no protection. A third drive without rebuilt data takes the pool offline.
+
+Rebuild areas are limited. Each failed drive keeps one rebuild area in use until it is replaced, so a finished rebuild does not make the array safe for ever. With one rebuild area (the default), fail a drive, let it rebuild and fail another one: the second drive has nowhere to rebuild, so the array stays degraded until the drives are replaced. Two more failures and the data is gone.
 
 The model is deliberately simple. It teaches the idea behind distributed (declustered) RAID and why rebuild time matters. It is not a simulation of any specific product, and the timings are not real.
 
@@ -47,8 +49,8 @@ The classic script mounts every `[data-fail-a-drive]` element when the page load
 The same files are available from jsDelivr, which serves them from the tagged release in this repository:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rubesak/fail-a-drive-drill@v1.0.0/dist/fail-a-drive.css">
-<script src="https://cdn.jsdelivr.net/gh/rubesak/fail-a-drive-drill@v1.0.0/dist/fail-a-drive.js" defer></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rubesak/fail-a-drive-drill@v1.1.0/dist/fail-a-drive.css">
+<script src="https://cdn.jsdelivr.net/gh/rubesak/fail-a-drive-drill@v1.1.0/dist/fail-a-drive.js" defer></script>
 ```
 
 ### As an ES module
@@ -56,7 +58,7 @@ The same files are available from jsDelivr, which serves them from the tagged re
 Install it straight from GitHub (the package is not published to npm):
 
 ```bash
-npm install github:rubesak/fail-a-drive-drill#v1.0.0
+npm install github:rubesak/fail-a-drive-drill#v1.1.0
 ```
 
 ```js
@@ -65,6 +67,7 @@ import 'fail-a-drive/style.css'; // or link dist/fail-a-drive.css yourself
 
 const drill = mount('#drill', { drives: 12, rebuildMs: 4000 });
 drill.fail(3);      // fail drive 3
+drill.replace();    // replace the failed drives once the rebuild is done
 drill.reset();      // back to healthy
 drill.destroy();    // stop timers, put the original content back
 ```
@@ -78,11 +81,11 @@ drill.destroy();    // stop timers, put the original content back
 | `defaults` | The default options |
 | `strings` | The default texts |
 
-The controller has `root` (the `.fad` element), `fail(index)` (0-based), `failRandom()`, `reset()` and `destroy()`. `destroy()` stops all timers and listeners and puts the element's original content back.
+The controller has `root` (the `.fad` element), `fail(index)` (0-based), `failRandom()`, `replace()`, `reset()` and `destroy()`. `destroy()` stops all timers and listeners and puts the element's original content back.
 
 ## Options
 
-Pass them to `mount(el, options)` or as `data-*` attributes (`data-drives="12"`, `data-rebuild-ms="4000"`, `data-theme="dark"`, `data-title="..."`, `data-heading-level="3"`, `data-animate="false"`).
+Pass them to `mount(el, options)` or as `data-*` attributes (`data-drives="12"`, `data-rebuild-ms="4000"`, `data-theme="dark"`, `data-title="..."`, `data-heading-level="3"`, `data-animate="false"`, `data-rebuild-areas="2"`, `data-auto-replace`).
 
 | Option | Default | Description |
 | --- | --- | --- |
@@ -91,8 +94,10 @@ Pass them to `mount(el, options)` or as `data-*` attributes (`data-drives="12"`,
 | `stripe` | `12` | Stripe width used to place the parity strips |
 | `rebuildMs` | `7000` | Rebuild time for one drive |
 | `spareSlower` | `4` | How much slower the "one hot spare" bar is |
+| `rebuildAreas` | `1` | Rebuild areas (distributed spare capacity), 1 to 4. Each one holds the data of one failed drive until that drive is replaced |
 | `detectMs` | `2400` | Pause between a failure and the start of the rebuild |
-| `holdMs` | `4200` | Pause between "rebuild done" and the drive replacement |
+| `autoReplace` | `false` | Replace failed drives without the visitor, after `holdMs` |
+| `holdMs` | `4200` | With `autoReplace`: pause before the failed drives are replaced |
 | `copybackMs` | `3600` | Copyback time |
 | `theme` | `'auto'` | `'auto'`, `'light'` or `'dark'` |
 | `title` | `'Fail a drive and see what the storage does.'` | Heading text |
